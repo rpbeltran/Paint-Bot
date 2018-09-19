@@ -1,0 +1,221 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+	
+	<meta charset="utf-8">
+
+	<title> PaintBot </title>
+
+</head>
+
+<body>
+
+	<svg id="canvas" height="500" width="800" style="float:left; border:solid"> </svg>
+
+	<div id="controls" style="float:left; margin:50px">
+
+		<button id = "button_tap" style = "width:120px"> Tap </button> 
+		<br><br>
+		<button id = "button_snap"   style = "width:60px"> Snap </button> 
+		<button id = "button_unsnap" style = "width:60px"> Unsnap </button> 
+		<br><br>
+		<button id = "button_ccw1" style = "width:60px"> CCW </button>
+		<button id = "button_cw1"  style = "width:60px"> CW </button>
+		<br>
+		<button id = "button_ccw2" style = "width:60px"> CCW </button> 
+		<button id = "button_cw2"  style = "width:60px"> CW </button>
+		<br>
+		<button id = "button_ccw3" style = "width:60px"> CCW </button>
+		<button id = "button_cw3"  style = "width:60px"> CW </button>
+
+	</div>
+
+	
+	<!-- Dependencies -->
+	<script src="./dependencies/mathjs/math.min.js"></script>
+	<script src="./dependencies/snap/snap.svg-min.js"></script>
+
+
+	<script type="text/javascript">
+
+		var canvas_width = 800;
+		var canvas_height = 500;
+
+		var ground_height = 45;
+
+		var canvas = Snap("#canvas");
+
+		function Segment ( _x, _y, _l, _theta ) {
+			
+			this.x = _x;
+			this.y = _y;
+			this.l = _l;
+			this.theta = _theta;
+
+			this.forward = function() {
+				this.x2 = this.x + this.l*math.cos( this.theta );
+				this.y2 = this.y - this.l*math.sin( this.theta );
+			}
+
+			this.forward();
+
+		}
+
+		function Robot(  ) {
+
+			this.segment_lengths = [ 150, 100, 75 ];
+			this.segment_angles  = [ math.pi/2, -math.pi/2, -math.pi/2 ];
+
+			this.snapped = false;
+
+
+			// Segments
+
+			this.s1 = new Segment( canvas_width/2, canvas_height-ground_height, this.segment_lengths[0], this.segment_angles[0] );
+			this.s2 = new Segment( this.s1.x2, this.s1.y2, this.segment_lengths[1], this.segment_angles[0] + this.segment_angles[1] );
+			this.s3 = new Segment( this.s2.x2, this.s2.y2, this.segment_lengths[2], this.segment_angles[0] + this.segment_angles[1] + this.segment_angles[2] );
+
+
+			// Rendering Objects
+
+			var segment_style = { stroke: "#222", strokeWidth: 3, strokeLinecap:"round" };
+			var node_style    = { fill:"#111" };
+			var brush_style   = { fill:"#c00" };
+
+			this.r_seg1 = canvas.line( this.s1.x, this.s1.y, this.s1.x2, this.s1.y2 );
+			this.r_seg1.attr( segment_style );
+
+			this.r_seg2 = canvas.line( this.s2.x, this.s2.y, this.s2.x2, this.s2.y2 );
+			this.r_seg2.attr( segment_style );
+
+			this.r_seg3 = canvas.line( this.s3.x, this.s3.y, this.s3.x2, this.s3.y2 );
+			this.r_seg3.attr( segment_style );
+
+			this.r_node1 = canvas.circle( this.s1.x, this.s1.y, 10 );
+			this.r_node1.attr(node_style);
+
+			this.r_node2 = canvas.circle( this.s2.x, this.s2.y, 5);
+			this.r_node2.attr(node_style);
+
+			this.r_node3 = canvas.circle( this.s3.x, this.s3.y, 5);
+			this.r_node3.attr(node_style);
+
+			this.r_brush = canvas.circle( this.s3.x2, this.s3.y2, 10);
+			this.r_brush.attr(brush_style);
+
+			
+			// Control Functions
+
+			this.adjust_angle = function( i, delta ) {
+
+				this.segment_angles[i] += delta;
+
+				this.s1.theta = this.segment_angles[0];
+				this.s1.forward();
+				this.s2.x = this.s1.x2;
+				this.s2.y = this.s1.y2;
+					
+				this.s2.theta = this.s1.theta + this.segment_angles[1];
+				this.s2.forward();
+				this.s3.x = this.s2.x2;
+				this.s3.y = this.s2.y2;
+				
+				this.s3.theta = this.s2.theta + this.segment_angles[2];
+				this.s3.forward();
+
+				this.rerender();
+			}
+
+			this.tap = function () { 
+				var tap = canvas.circle( this.s3.x2, this.s3.y2, 3);
+				tap.attr({ fill: this.r_brush.attr("fill")});
+			}
+
+			this.snap = function ( _snapped = true ) {
+				this.snapped = _snapped;
+			}
+
+
+			// Rendering Function
+
+			this.rerender = function () {
+
+				var old_brush = [ this.r_brush.attr("cx"), this.r_brush.attr("cy") ];
+
+				this.r_node1.attr({cx:this.s1.x, cy:this.s1.y});
+				this.r_node2.attr({cx:this.s2.x, cy:this.s2.y});
+				this.r_node3.attr({cx:this.s3.x, cy:this.s3.y});
+				this.r_brush.attr({cx:this.s3.x2, cy:this.s3.y2});
+
+				this.r_seg1.attr({x1:this.s1.x, y1: this.s1.y, x2:this.s1.x2, y2: this.s1.y2 });
+				this.r_seg2.attr({x1:this.s2.x, y1: this.s2.y, x2:this.s2.x2, y2: this.s2.y2 });
+				this.r_seg3.attr({x1:this.s3.x, y1: this.s3.y, x2:this.s3.x2, y2: this.s3.y2 });
+
+				if( this.snapped ) {
+					var stroke = canvas.line( old_brush[0], old_brush[1], this.r_brush.attr("cx"), this.r_brush.attr("cy") );
+					stroke.attr({ stroke: this.r_brush.attr("fill"), strokeWidth: 3, strokeLinecap:"round" });
+				}
+			}
+			
+		}
+
+		rob = new Robot ();
+
+		var ground = canvas.rect(0,canvas_height-ground_height, canvas_width, canvas_height );
+		ground.attr({
+		  stroke: "#000",
+		  fill: "#0c0",
+		  strokeWidth: 1,
+		  strokeLinecap:"round"
+		});
+
+		var step = .1;
+
+		document.getElementById('button_tap').addEventListener('click', function() {
+			rob.tap();
+		}, false);
+
+		document.getElementById('button_snap').addEventListener('click', function() {
+			rob.snap( true );
+		}, false);
+
+		document.getElementById('button_unsnap').addEventListener('click', function() {
+			rob.snap( false );
+		}, false);
+
+		document.getElementById('button_ccw1').addEventListener('click', function() {
+			rob.adjust_angle( 2, step );
+		}, false);
+
+		document.getElementById('button_cw1').addEventListener('click', function() {
+			rob.adjust_angle( 2, -step );
+		}, false);
+
+		document.getElementById('button_ccw2').addEventListener('click', function() {
+			rob.adjust_angle( 1, step );
+		}, false);
+
+		document.getElementById('button_cw2').addEventListener('click', function() {
+			rob.adjust_angle( 1, -step );
+		}, false);
+
+		document.getElementById('button_ccw3').addEventListener('click', function() {
+			rob.adjust_angle( 0, step );
+		}, false);
+
+		document.getElementById('button_cw3').addEventListener('click', function() {
+			rob.adjust_angle( 0, -step );
+		}, false);
+
+
+		
+
+
+
+	</script>
+
+</body>
+
+</html>
