@@ -70,19 +70,17 @@
 
 			this.snapped = false;
 
-
 			// Segments
 
 			this.s1 = new Segment( canvas_width/2, canvas_height-ground_height, this.segment_lengths[0], this.segment_angles[0] );
 			this.s2 = new Segment( this.s1.x2, this.s1.y2, this.segment_lengths[1], this.segment_angles[0] + this.segment_angles[1] );
 			this.s3 = new Segment( this.s2.x2, this.s2.y2, this.segment_lengths[2], this.segment_angles[0] + this.segment_angles[1] + this.segment_angles[2] );
 
-
 			// Rendering Objects
 
 			var segment_style = { stroke: "#222", strokeWidth: 3, strokeLinecap:"round" };
 			var node_style    = { fill:"#111" };
-			var brush_style   = { fill:"#c00" };
+			var brush_style   = { fill:"#933" };
 
 			this.r_seg1 = canvas.line( this.s1.x, this.s1.y, this.s1.x2, this.s1.y2 );
 			this.r_seg1.attr( segment_style );
@@ -105,32 +103,59 @@
 			this.r_brush = canvas.circle( this.s3.x2, this.s3.y2, 10);
 			this.r_brush.attr(brush_style);
 
+
+
 			
 			// Control Functions
 
-			this.adjust_angle = function( i, delta ) {
+			this.resting = true;
+			this.motion = [0,0];
 
-				this.segment_angles[i] += delta;
+			var this_ = this;
 
-				this.s1.theta = this.segment_angles[0];
-				this.s1.forward();
-				this.s2.x = this.s1.x2;
-				this.s2.y = this.s1.y2;
+			setInterval( function() {
+
+				if( ! this_.resting ) {
+
+					this_.segment_angles[this_.motion[0]] += this_.motion[1];
+
+					this_.s1.theta = this_.segment_angles[0];
+					this_.s1.forward();
+					this_.s2.x = this_.s1.x2;
+					this_.s2.y = this_.s1.y2;
+						
+					this_.s2.theta = this_.s1.theta + this_.segment_angles[1];
+					this_.s2.forward();
+					this_.s3.x = this_.s2.x2;
+					this_.s3.y = this_.s2.y2;
 					
-				this.s2.theta = this.s1.theta + this.segment_angles[1];
-				this.s2.forward();
-				this.s3.x = this.s2.x2;
-				this.s3.y = this.s2.y2;
-				
-				this.s3.theta = this.s2.theta + this.segment_angles[2];
-				this.s3.forward();
+					this_.s3.theta = this_.s2.theta + this_.segment_angles[2];
+					this_.s3.forward();
 
-				this.rerender();
+					this_.rerender();
+				}
+
+			}, 100);
+
+			this.rest = function() {
+				this.resting = true;
+				this.motion  = [0,0];
 			}
 
+			this.adjust_angle = function( i, delta ) {
+
+				this.resting = false;
+				this.motion  = [i, delta];
+								
+			}
+
+			// Paint functions
+
+			this.stroke_width = 10;
+
 			this.tap = function () { 
-				var tap = canvas.circle( this.s3.x2, this.s3.y2, 3);
-				tap.attr({ fill: this.r_brush.attr("fill")});
+				var tap = canvas.circle( this.s3.x2, this.s3.y2, this.stroke_width/2);
+				tap.attr({ fill: "#c00"});
 			}
 
 			this.snap = function ( _snapped = true ) {
@@ -155,10 +180,10 @@
 
 				if( this.snapped ) {
 					var stroke = canvas.line( old_brush[0], old_brush[1], this.r_brush.attr("cx"), this.r_brush.attr("cy") );
-					stroke.attr({ stroke: this.r_brush.attr("fill"), strokeWidth: 3, strokeLinecap:"round" });
+					stroke.attr({ stroke: "#c00", strokeWidth: this.stroke_width, strokeLinecap:"round" });
 				}
 			}
-			
+
 		}
 
 		rob = new Robot ();
@@ -171,7 +196,7 @@
 		  strokeLinecap:"round"
 		});
 
-		var step = .1;
+		var step = math.pi / 180.0 ;
 
 		document.getElementById('button_tap').addEventListener('click', function() {
 			rob.tap();
@@ -185,32 +210,36 @@
 			rob.snap( false );
 		}, false);
 
-		document.getElementById('button_ccw1').addEventListener('click', function() {
+		document.getElementById('button_ccw1').addEventListener('mousedown', function() {
 			rob.adjust_angle( 2, step );
 		}, false);
 
-		document.getElementById('button_cw1').addEventListener('click', function() {
+		document.getElementById('button_cw1').addEventListener('mousedown', function() {
 			rob.adjust_angle( 2, -step );
 		}, false);
 
-		document.getElementById('button_ccw2').addEventListener('click', function() {
+		document.getElementById('button_ccw2').addEventListener('mousedown', function() {
 			rob.adjust_angle( 1, step );
 		}, false);
 
-		document.getElementById('button_cw2').addEventListener('click', function() {
+		document.getElementById('button_cw2').addEventListener('mousedown', function() {
 			rob.adjust_angle( 1, -step );
 		}, false);
 
-		document.getElementById('button_ccw3').addEventListener('click', function() {
+		document.getElementById('button_ccw3').addEventListener('mousedown', function() {
 			rob.adjust_angle( 0, step );
 		}, false);
 
-		document.getElementById('button_cw3').addEventListener('click', function() {
+		document.getElementById('button_cw3').addEventListener('mousedown', function() {
 			rob.adjust_angle( 0, -step );
 		}, false);
 
+		document.body.addEventListener('mouseup', function() {
+			rob.rest( );
+		}, false);
 
-		
+
+
 
 
 
