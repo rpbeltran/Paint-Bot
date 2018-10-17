@@ -177,7 +177,7 @@
 
 			this.adjust_angle = function( i, delta ) {
 
-				this.resting = false;
+				this.resting   = false;
 				this.motion[i] = delta;
 								
 			}
@@ -195,6 +195,7 @@
 				return [ x, y ];
 
 			}
+
 			this.calculate_position = function ( ) {
 
 				return this.forward_kinematics( this.segment_angles[0], this.segment_angles[1], this.segment_angles[2] );
@@ -203,9 +204,9 @@
 
 			this.inverse_kinamatics = function ( x, y ) {
 
-				var best_guess_a = math.pi;
-				var best_guess_b = math.pi;
-				var best_guess_c = math.pi;
+				var best_guess_a = this.segment_angles[0];
+				var best_guess_b = this.segment_angles[1];
+				var best_guess_c = this.segment_angles[2];
 
 				var approach = 9999999999999;
 
@@ -213,7 +214,7 @@
 
 				hits = [];
 
-				for( var step = 1; step > .0001; step = step/2 )
+				for( var step = .01; step > .0001; step = step/2 )
 				{
 					var new_guess_a = best_guess_a;
 					var new_guess_b = best_guess_b;
@@ -256,6 +257,8 @@
 					var best_dist = 999999999999;
 					var best_i = -1;
 
+					dists = []
+
 					for ( var i = 0; i < hits.length; i++ )
 					{
 						var delta = math.abs(cur[0]-hits[i][0]) + math.abs(cur[1]-hits[i][1]) + math.abs(cur[2]-hits[i][2]);
@@ -264,8 +267,12 @@
 							best_dist = delta;
 							best_i = i;
 						}
+						dists.push( delta );
 
 					}
+
+					console.log( best_dist );
+					console.log( math.mean( hits ) );
 
 					return hits[best_i];
 				}
