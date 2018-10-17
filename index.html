@@ -22,13 +22,19 @@
 		<button id = "button_unsnap" style = "width:60px"> Unsnap </button> 
 		<br><br>
 		<button id = "button_ccw1" style = "width:60px"> CCW </button>
-		<button id = "button_cw1"  style = "width:60px"> CW </button>
+		<button id = "button_cw1"  style = "width:60px">  CW </button>
 		<br>
 		<button id = "button_ccw2" style = "width:60px"> CCW </button> 
-		<button id = "button_cw2"  style = "width:60px"> CW </button>
+		<button id = "button_cw2"  style = "width:60px">  CW </button>
 		<br>
 		<button id = "button_ccw3" style = "width:60px"> CCW </button>
-		<button id = "button_cw3"  style = "width:60px"> CW </button>
+		<button id = "button_cw3"  style = "width:60px">  CW </button>
+		<br><br>
+		<button id = "button_left" style = "width:60px"> Left </button>
+		<button id = "button_right"  style = "width:60px">  Right </button>
+		<br>
+		<button id = "button_up" style = "width:60px"> Up </button>
+		<button id = "button_down"  style = "width:60px">  Down </button>
 
 	</div>
 
@@ -70,11 +76,13 @@
 
 			this.snapped = false;
 
+
 			// Segments
 
 			this.s1 = new Segment( canvas_width/2, canvas_height-ground_height, this.segment_lengths[0], this.segment_angles[0] );
 			this.s2 = new Segment( this.s1.x2, this.s1.y2, this.segment_lengths[1], this.segment_angles[0] + this.segment_angles[1] );
 			this.s3 = new Segment( this.s2.x2, this.s2.y2, this.segment_lengths[2], this.segment_angles[0] + this.segment_angles[1] + this.segment_angles[2] );
+
 
 			// Rendering Objects
 
@@ -103,21 +111,46 @@
 			this.r_brush = canvas.circle( this.s3.x2, this.s3.y2, 10);
 			this.r_brush.attr(brush_style);
 
-
-
 			
 			// Control Functions
 
-			this.resting = true;
-			this.motion = [0,0];
+			this.resting  = true;
+			this.motion   = [0,0,0];
+			this.teleport = -1;
 
 			var this_ = this;
 
 			setInterval( function() {
 
-				if( ! this_.resting ) {
+				if( this_.teleport != -1 ) {
 
-					this_.segment_angles[this_.motion[0]] += this_.motion[1];
+					this_.segment_angles[0] = this_.teleport[0];
+					this_.segment_angles[1] = this_.teleport[1];
+					this_.segment_angles[2] = this_.teleport[2];
+
+					this_.s1.theta = this_.segment_angles[0];
+					this_.s1.forward();
+					this_.s2.x = this_.s1.x2;
+					this_.s2.y = this_.s1.y2;
+						
+					this_.s2.theta = this_.s1.theta + this_.segment_angles[1];
+					this_.s2.forward();
+					this_.s3.x = this_.s2.x2;
+					this_.s3.y = this_.s2.y2;
+					
+					this_.s3.theta = this_.s2.theta + this_.segment_angles[2];
+					this_.s3.forward();
+
+					this_.teleport = -1;
+
+					this_.rerender();
+				}
+
+				else if( ! this_.resting ) {
+
+					this_.segment_angles[0] += this_.motion[0];
+					this_.segment_angles[1] += this_.motion[1];
+					this_.segment_angles[2] += this_.motion[2];
 
 					this_.s1.theta = this_.segment_angles[0];
 					this_.s1.forward();
@@ -139,15 +172,123 @@
 
 			this.rest = function() {
 				this.resting = true;
-				this.motion  = [0,0];
+				this.motion  = [0,0,0];
 			}
 
 			this.adjust_angle = function( i, delta ) {
 
 				this.resting = false;
-				this.motion  = [i, delta];
+				this.motion[i] = delta;
 								
 			}
+
+			this.forward_kinematics = function ( a, b, c ) {
+
+				var x = this.segment_lengths[0] * math.cos(     a     ) + 
+						this.segment_lengths[1] * math.cos(   a + b   ) + 
+						this.segment_lengths[2] * math.cos( a + b + c );
+
+				var y = this.segment_lengths[0] * math.sin(     a      ) +
+						this.segment_lengths[1] * math.sin(   a + b    ) +
+						this.segment_lengths[2] * math.sin( a + b + c );
+
+				return [ x, y ];
+
+			}
+			this.calculate_position = function ( ) {
+
+				return this.forward_kinematics( this.segment_angles[0], this.segment_angles[1], this.segment_angles[2] );
+
+			}
+
+			this.inverse_kinamatics = function ( x, y ) {
+
+				var best_guess_a = math.pi;
+				var best_guess_b = math.pi;
+				var best_guess_c = math.pi;
+
+				var approach = 9999999999999;
+
+				var cut_off = 1.5;
+
+				hits = [];
+
+				for( var step = 1; step > .0001; step = step/2 )
+				{
+					var new_guess_a = best_guess_a;
+					var new_guess_b = best_guess_b;
+					var new_guess_c = best_guess_c;
+
+					for( var a = best_guess_a - ( math.pi + 1 ) * 2 * step; a <= best_guess_a + ( math.pi + 1 ) * 2 * step; a = a + step )
+					{
+						for( var b = best_guess_b - ( math.pi + 1 ) * 2 * step; b <= best_guess_b + ( math.pi + 1 ) * 2 * step; b = b + step )
+						{
+							for( var c = best_guess_c - ( math.pi + 1 ) * 2 * step; c <= best_guess_c + ( math.pi + 1 ) * 2 * step; c = c + step )
+							{
+								var pos  = this.forward_kinematics( a, b, c );
+								
+								var dist = ( x - pos[0] )**2 + ( y - pos[1] )**2;
+								
+								if ( dist < approach ) {
+
+									new_guess_a = a;
+									new_guess_b = b;
+									new_guess_c = c;
+									approach = dist;
+								}
+
+								if( dist < cut_off ) {
+									hits.push( [ new_guess_a, new_guess_b, new_guess_c ] );
+								}
+							}
+						}
+					}
+
+					best_guess_a = new_guess_a;
+					best_guess_b = new_guess_b;
+					best_guess_c = new_guess_c;
+
+				}
+
+				if( hits.length > 0 ) {
+
+					var cur = this.segment_angles;
+					var best_dist = 999999999999;
+					var best_i = -1;
+
+					for ( var i = 0; i < hits.length; i++ )
+					{
+						var delta = math.abs(cur[0]-hits[i][0]) + math.abs(cur[1]-hits[i][1]) + math.abs(cur[2]-hits[i][2]);
+
+						if( delta < best_dist ) {
+							best_dist = delta;
+							best_i = i;
+						}
+
+					}
+
+					return hits[best_i];
+				}
+
+				return [ best_guess_a, best_guess_b, best_guess_c ];
+
+			}
+
+
+			this.move_to = function ( x, y ) {
+
+				this.teleport = this.inverse_kinamatics( x, y );
+
+			} 
+			
+			this.move_by = function ( x, y ) {
+
+				var pos = this.calculate_position();
+
+				this.teleport = this.inverse_kinamatics( x + pos[0], y + pos[1] );
+
+			}
+
 
 			// Paint functions
 
@@ -182,9 +323,15 @@
 					var stroke = canvas.line( old_brush[0], old_brush[1], this.r_brush.attr("cx"), this.r_brush.attr("cy") );
 					stroke.attr({ stroke: "#c00", strokeWidth: this.stroke_width, strokeLinecap:"round" });
 				}
+
 			}
 
+
+
+
 		}
+
+
 
 		rob = new Robot ();
 
@@ -232,6 +379,22 @@
 
 		document.getElementById('button_cw3').addEventListener('mousedown', function() {
 			rob.adjust_angle( 0, -step );
+		}, false);
+
+		document.getElementById('button_left').addEventListener('mousedown', function() {
+			rob.move_by( -5, 0 );
+		}, false);
+
+		document.getElementById('button_right').addEventListener('mousedown', function() {
+			rob.move_by( 5, 0 );
+		}, false);
+
+		document.getElementById('button_up').addEventListener('mousedown', function() {
+			rob.move_by( 0, 5 );
+		}, false);
+
+		document.getElementById('button_down').addEventListener('mousedown', function() {
+			rob.move_by( 0, -5 );
 		}, false);
 
 		document.body.addEventListener('mouseup', function() {
