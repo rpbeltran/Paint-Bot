@@ -10,3 +10,4 @@ Simply follow the [link](http://htmlpreview.github.io/?https://github.com/rpbelt
 - **Unsnap**: Unlock the paintbrush if snapped.
 - **CCW/CW Buttons**: Hold a button to rotate the corresponding segment in the indicated direction. The top row of buttons corresponds
 to the brush, and so on.
+- **Left/Right/Up/Down**: Move the paintbrush in the specified direction (if possible).
